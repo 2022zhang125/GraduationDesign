@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.ncfback.mapper.ListeningHistoryMapper">
+
+    <select id="findPage" resultType="com.example.ncfback.entity.ListeningHistoryView">
+        SELECT history.user_id,
+               history.username,
+               history.item_id,
+               history.title,
+               history.artist_name,
+               history.album_name,
+               history.genre_code,
+               history.cover_url,
+               history.preview_url,
+               history.last_listen_time,
+               history.play_count,
+               history.complete_play_count,
+               history.played_duration_seconds,
+               history.max_watch_ratio
+        FROM (
+            SELECT i.user_id,
+                   u.external_user_no AS username,
+                   i.item_id,
+                   it.title,
+                   it.artist_name,
+                   it.album_name,
+                   it.genre_code,
+                   m.cover_url,
+                   m.preview_url,
+                   MAX(i.event_time) AS last_listen_time,
+                   SUM(CASE WHEN i.event_type = 'play_start' THEN 1 ELSE 0 END) AS play_count,
+                   SUM(CASE WHEN i.event_type = 'play_complete' THEN 1 ELSE 0 END) AS complete_play_count,
+                   COALESCE(SUM(CASE WHEN i.play_duration_sec IS NULL THEN 0 ELSE i.play_duration_sec END), 0) AS played_duration_seconds,
+                   COALESCE(MAX(i.watch_ratio), 0) AS max_watch_ratio
+            FROM interactions i
+            JOIN users u ON u.user_id = i.user_id
+            JOIN items it ON it.item_id = i.item_id
+            LEFT JOIN item_media m ON m.item_id = i.item_id
+            WHERE i.event_type IN ('play_start', 'play_stop', 'play_complete')
+            <if test="userId != null">
+                AND i.user_id = #{userId}
+            </if>
+            GROUP BY i.user_id,
+                     u.external_user_no,
+                     i.item_id,
+                     it.title,
+                     it.artist_name,
+                     it.album_name,
+                     it.genre_code,
+                     m.cover_url,
+                     m.preview_url
+        ) history
+        ORDER BY history.last_listen_time DESC, history.user_id DESC, history.item_id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countHistory" resultType="long">
+        SELECT COUNT(*)
+        FROM (
+            SELECT 1
+            FROM interactions i
+            WHERE i.event_type IN ('play_start', 'play_stop', 'play_complete')
+            <if test="userId != null">
+                AND i.user_id = #{userId}
+            </if>
+            GROUP BY i.user_id, i.item_id
+        ) history_count
+    </select>
+
+    <select id="findCurrentFeatureDate" resultType="java.time.LocalDate">
+        SELECT COALESCE(MAX(feature_date), CURRENT_DATE())
+        FROM user_item_features_daily
+    </select>
+
+    <insert id="insertInteraction" parameterType="com.example.ncfback.entity.ListeningInteractionRecord">
+        INSERT INTO interactions (
+            request_id, trace_id, user_id, item_id, event_type, event_time,
+            play_duration_sec, watch_ratio, device_type, channel, position_no, context_json
+        ) VALUES (
+            #{requestId}, #{traceId}, #{userId}, #{itemId}, #{eventType}, #{eventTime},
+            #{playDurationSec}, #{watchRatio}, #{deviceType}, #{channel}, #{positionNo}, #{contextJson}
+        )
+    </insert>
+
+    <insert id="upsertUserItemFeature">
+        INSERT INTO user_item_features_daily (
+            feature_date, user_id, item_id, last_interaction_time,
+            interaction_cnt_30d, complete_play_cnt_30d, favorite_flag_ever, dislike_flag_30d,
+            created_at, updated_at
+        ) VALUES (
+            #{featureDate}, #{userId}, #{itemId}, #{lastInteractionTime},
+            #{interactionDelta}, #{completeDelta}, #{favoriteFlagEver}, #{dislikeFlag30d},
+            NOW(), NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            last_interaction_time = CASE
+                WHEN last_interaction_time IS NULL OR last_interaction_time <![CDATA[ < ]]> VALUES(last_interaction_time)
+                    THEN VALUES(last_interaction_time)
+                ELSE last_interaction_time
+            END,
+            interaction_cnt_30d = interaction_cnt_30d + VALUES(interaction_cnt_30d),
+            complete_play_cnt_30d = complete_play_cnt_30d + VALUES(complete_play_cnt_30d),
+            favorite_flag_ever = GREATEST(favorite_flag_ever, VALUES(favorite_flag_ever)),
+            dislike_flag_30d = GREATEST(dislike_flag_30d, VALUES(dislike_flag_30d)),
+            updated_at = NOW()
+    </insert>
+
+</mapper>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.ncfback.mapper.UserMapper">
+
+    <select id="findPage" resultType="com.example.ncfback.entity.User">
+        SELECT user_id, external_user_no, password_hash, gender, birth_year,
+               register_time, user_status, created_at, updated_at
+        FROM users
+        ORDER BY user_id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="findById" resultType="com.example.ncfback.entity.User">
+        SELECT user_id, external_user_no, password_hash, gender, birth_year,
+               register_time, user_status, created_at, updated_at
+        FROM users
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="findByExternalUserNo" resultType="com.example.ncfback.entity.User">
+        SELECT user_id, external_user_no, password_hash, gender, birth_year,
+               register_time, user_status, created_at, updated_at
+        FROM users
+        WHERE external_user_no = #{externalUserNo}
+        LIMIT 1
+    </select>
+
+    <select id="findNextUserId" resultType="long">
+        SELECT COALESCE(MAX(user_id), 0) + 1
+        FROM users
+    </select>
+
+    <insert id="insert" parameterType="com.example.ncfback.entity.User">
+        INSERT INTO users (
+            user_id, external_user_no, password_hash, gender, birth_year,
+            register_time, user_status, created_at, updated_at
+        ) VALUES (
+            #{userId}, #{externalUserNo}, #{passwordHash}, #{gender}, #{birthYear},
+            #{registerTime}, #{userStatus}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM users
+    </select>
+
+</mapper>

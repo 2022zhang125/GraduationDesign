@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.ncfback.mapper.ItemMediaMapper">
+
+    <select id="findByItemId" resultType="com.example.ncfback.entity.ItemMedia">
+        SELECT item_id, preview_url, cover_url, preview_duration_seconds,
+               lyric_snippet, source_platform, updated_at
+        FROM item_media
+        WHERE item_id = #{itemId}
+        LIMIT 1
+    </select>
+
+    <select id="findByItemIds" resultType="com.example.ncfback.entity.ItemMedia">
+        SELECT item_id, preview_url, cover_url, preview_duration_seconds,
+               lyric_snippet, source_platform, updated_at
+        FROM item_media
+        <where>
+            <if test="itemIds != null and itemIds.size() > 0">
+                item_id IN
+                <foreach collection="itemIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+            <if test="itemIds == null or itemIds.size() == 0">
+                1 = 0
+            </if>
+        </where>
+    </select>
+
+    <insert id="upsert" parameterType="com.example.ncfback.entity.ItemMedia">
+        INSERT INTO item_media (
+            item_id, preview_url, cover_url, preview_duration_seconds,
+            lyric_snippet, source_platform, updated_at
+        ) VALUES (
+            #{itemId}, #{previewUrl}, #{coverUrl}, #{previewDurationSeconds},
+            #{lyricSnippet}, #{sourcePlatform}, NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            preview_url = VALUES(preview_url),
+            cover_url = VALUES(cover_url),
+            preview_duration_seconds = VALUES(preview_duration_seconds),
+            lyric_snippet = VALUES(lyric_snippet),
+            source_platform = VALUES(source_platform),
+            updated_at = NOW()
+    </insert>
+
+</mapper>

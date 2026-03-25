@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.ncfback.mapper.RecommendationFeatureMapper">
+
+    <select id="findLatestReadyModelVersion" resultType="string">
+        SELECT model_version
+        FROM model_registry
+        WHERE status IN ('ready', 'online')
+        ORDER BY updated_at DESC, created_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="findAllActiveUsers" resultType="com.example.ncfback.entity.User">
+        SELECT user_id, external_user_no, password_hash, gender, birth_year,
+               register_time, user_status, created_at, updated_at
+        FROM users
+        WHERE user_status = 1
+        ORDER BY user_id
+    </select>
+
+    <select id="findActiveUserById" resultType="com.example.ncfback.entity.User">
+        SELECT user_id, external_user_no, password_hash, gender, birth_year,
+               register_time, user_status, created_at, updated_at
+        FROM users
+        WHERE user_status = 1
+          AND user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <select id="findAllActiveItems" resultType="com.example.ncfback.entity.Item">
+        SELECT item_id, external_item_no, title, artist_id, artist_name,
+               album_id, album_name, genre_code, language_code, duration_seconds,
+               release_date, item_status, created_at, updated_at
+        FROM items
+        WHERE item_status = 1
+          AND title NOT LIKE '绀轰緥姝屾洸%'
+        ORDER BY item_id
+    </select>
+
+    <select id="findUserEmbeddings" resultType="com.example.ncfback.entity.UserEmbeddingRow">
+        SELECT model_version, user_id, embedding_dim, CAST(embedding_vector AS CHAR) AS embedding_vector
+        FROM user_embeddings
+        WHERE model_version = #{modelVersion}
+    </select>
+
+    <select id="findItemEmbeddings" resultType="com.example.ncfback.entity.ItemEmbeddingRow">
+        SELECT model_version, item_id, embedding_dim, CAST(embedding_vector AS CHAR) AS embedding_vector
+        FROM item_embeddings
+        WHERE model_version = #{modelVersion}
+    </select>
+
+    <select id="findLatestUserItemFeatures" resultType="com.example.ncfback.entity.UserItemFeatureRow">
+        SELECT feature_date, user_id, item_id, last_interaction_time,
+               interaction_cnt_30d, complete_play_cnt_30d, favorite_flag_ever, dislike_flag_30d
+        FROM user_item_features_daily
+        WHERE feature_date = (SELECT MAX(feature_date) FROM user_item_features_daily)
+        ORDER BY user_id, item_id
+    </select>
+
+    <select id="findLatestUserItemFeaturesByUserId" resultType="com.example.ncfback.entity.UserItemFeatureRow">
+        SELECT feature_date, user_id, item_id, last_interaction_time,
+               interaction_cnt_30d, complete_play_cnt_30d, favorite_flag_ever, dislike_flag_30d
+        FROM user_item_features_daily
+        WHERE feature_date = (SELECT MAX(feature_date) FROM user_item_features_daily)
+          AND user_id = #{userId}
+        ORDER BY item_id
+    </select>
+
+    <select id="findExplicitRatings" resultType="com.example.ncfback.entity.ExplicitRatingRow">
+        SELECT user_id,
+               item_id,
+               MAX(rating_value) AS rating_value,
+               MAX(rating_time) AS rating_time
+        FROM explicit_ratings
+        GROUP BY user_id, item_id
+        ORDER BY user_id, item_id
+    </select>
+
+    <select id="findExplicitRatingsByUserId" resultType="com.example.ncfback.entity.ExplicitRatingRow">
+        SELECT user_id,
+               item_id,
+               MAX(rating_value) AS rating_value,
+               MAX(rating_time) AS rating_time
+        FROM explicit_ratings
+        WHERE user_id = #{userId}
+        GROUP BY user_id, item_id
+        ORDER BY item_id
+    </select>
+
+    <select id="findAllFavorites" resultType="com.example.ncfback.entity.FavoriteEdge">
+        SELECT user_id, item_id
+        FROM user_favorite_items
+        ORDER BY user_id, item_id
+    </select>
+
+    <select id="findFavoritesByUserId" resultType="com.example.ncfback.entity.FavoriteEdge">
+        SELECT user_id, item_id
+        FROM user_favorite_items
+        WHERE user_id = #{userId}
+        ORDER BY item_id
+    </select>
+
+    <select id="findUserEmbeddingByUserId" resultType="com.example.ncfback.entity.UserEmbeddingRow">
+        SELECT model_version, user_id, embedding_dim, CAST(embedding_vector AS CHAR) AS embedding_vector
+        FROM user_embeddings
+        WHERE model_version = #{modelVersion}
+          AND user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <select id="countListeningInteractionsByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM interactions
+        WHERE user_id = #{userId}
+          AND event_type IN ('play_start', 'play_complete')
+    </select>
+
+    <select id="countExplicitRatingsByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM explicit_ratings
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="findColdStartTopItems" resultType="com.example.ncfback.entity.RecommendationView">
+        SELECT i.item_id,
+               i.title,
+               i.artist_name,
+               i.genre_code,
+               COALESCE(f.popularity_score, 0) AS score,
+               0 AS rank_no,
+               '' AS reason_text,
+               NOW() AS request_time
+        FROM items i
+        LEFT JOIN item_features_daily f
+               ON f.item_id = i.item_id
+              AND f.feature_date = (SELECT MAX(feature_date) FROM item_features_daily)
+        WHERE i.item_status = 1
+          AND i.title NOT LIKE 'ç¼â‚¬æžæ‰®ä¼æ¿®æ¿†æœ¬å¨²?'
+        ORDER BY COALESCE(f.popularity_score, 0) DESC,
+                 COALESCE(f.favorite_cnt_30d, 0) DESC,
+                 COALESCE(f.play_complete_cnt_1d, 0) DESC,
+                 COALESCE(f.click_cnt_1d, 0) DESC,
+                 COALESCE(f.exposure_cnt_1d, 0) DESC,
+                 i.item_id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findRecentRecommendationExposure" resultType="com.example.ncfback.entity.RecommendationExposureRow">
+        SELECT item_id,
+               COUNT(*) AS exposure_count,
+               MAX(request_time) AS last_request_time
+        FROM rec_results
+        WHERE user_id = #{userId}
+          AND request_time >= #{fromTime}
+          AND request_time <![CDATA[ < ]]> #{toTime}
+        GROUP BY item_id
+        ORDER BY last_request_time DESC, item_id ASC
+    </select>
+
+    <insert id="upsertModelRegistry">
+        INSERT INTO model_registry (
+            model_version, model_name, algorithm, feature_version, sampling_version,
+            train_snapshot_date, train_start_time, train_end_time, metrics_json,
+            model_uri, status, created_at, updated_at
+        ) VALUES (
+            #{modelVersion}, #{modelName}, #{algorithm}, #{featureVersion}, #{samplingVersion},
+            #{trainSnapshotDate}, NOW(), NOW(), #{metricsJson},
+            #{modelUri}, #{status}, NOW(), NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            model_name = VALUES(model_name),
+            algorithm = VALUES(algorithm),
+            feature_version = VALUES(feature_version),
+            sampling_version = VALUES(sampling_version),
+            train_snapshot_date = VALUES(train_snapshot_date),
+            train_end_time = NOW(),
+            metrics_json = VALUES(metrics_json),
+            model_uri = VALUES(model_uri),
+            status = VALUES(status),
+            updated_at = NOW()
+    </insert>
+
+    <insert id="upsertUserEmbeddings">
+        INSERT INTO user_embeddings (model_version, user_id, embedding_dim, embedding_vector, updated_at)
+        VALUES
+        <foreach collection="records" item="record" separator=",">
+            (#{record.modelVersion}, #{record.userId}, #{record.embeddingDim}, #{record.embeddingVector}, NOW())
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            embedding_dim = VALUES(embedding_dim),
+            embedding_vector = VALUES(embedding_vector),
+            updated_at = NOW()
+    </insert>
+
+    <insert id="upsertItemEmbeddings">
+        INSERT INTO item_embeddings (model_version, item_id, embedding_dim, embedding_vector, updated_at)
+        VALUES
+        <foreach collection="records" item="record" separator=",">
+            (#{record.modelVersion}, #{record.itemId}, #{record.embeddingDim}, #{record.embeddingVector}, NOW())
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            embedding_dim = VALUES(embedding_dim),
+            embedding_vector = VALUES(embedding_vector),
+            updated_at = NOW()
+    </insert>
+
+    <delete id="deleteRecommendationsByUserId">
+        DELETE FROM rec_results
+        WHERE user_id = #{userId}
+    </delete>
+
+    <delete id="deleteRecommendationsByUserIdFromTime">
+        DELETE FROM rec_results
+        WHERE user_id = #{userId}
+          AND request_time >= #{fromTime}
+    </delete>
+
+    <insert id="insertRecommendationSnapshots">
+        INSERT INTO rec_results (
+            request_id, user_id, item_id, model_version, score, rank_no, reason_text, scene, request_time
+        ) VALUES
+        <foreach collection="records" item="record" separator=",">
+            (
+                #{record.requestId},
+                #{record.userId},
+                #{record.itemId},
+                #{record.modelVersion},
+                #{record.score},
+                #{record.rankNo},
+                #{record.reasonText},
+                #{record.scene},
+                #{record.requestTime}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

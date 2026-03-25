@@ -1,0 +1,117 @@
+server:
+  port: 8081
+
+spring:
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  application:
+    name: ncf-back
+  datasource:
+    url: ${NCF_DB_URL:jdbc:mysql://47.94.108.74:33333/ncf?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${NCF_DB_USERNAME:root}
+    password: ${NCF_DB_PASSWORD:BelieveSun317}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${NCF_DB_POOL_MAX_SIZE:8}
+      minimum-idle: ${NCF_DB_POOL_MIN_IDLE:1}
+      idle-timeout: ${NCF_DB_POOL_IDLE_TIMEOUT:30000}
+      max-lifetime: ${NCF_DB_POOL_MAX_LIFETIME:600000}
+      connection-timeout: ${NCF_DB_POOL_CONNECTION_TIMEOUT:5000}
+  data:
+    redis:
+      host: 47.94.108.74
+      port: 22222
+      password: BelieveSun77
+      database: 1
+      timeout: 3s
+      connect-timeout: 3s
+      lettuce:
+        pool:
+          max-active: ${NCF_REDIS_MAX_ACTIVE:8}
+          max-idle: ${NCF_REDIS_MAX_IDLE:4}
+          min-idle: ${NCF_REDIS_MIN_IDLE:0}
+
+mybatis:
+  mapper-locations: classpath*:mapper/*.xml
+  type-aliases-package: com.example.ncfback.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    default-fetch-size: ${NCF_MYBATIS_FETCH_SIZE:100}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  jwt:
+    secret: ncf-back-jwt-secret-key-please-change-before-production-2026
+    expire-hours: 12
+  cors:
+    allowed-origin-patterns:
+      - https://*.believesun.cn
+      - http://localhost:*
+      - http://127.0.0.1:*
+      - https://localhost:*
+      - https://127.0.0.1:*
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    allowed-headers:
+      - "*"
+    exposed-headers:
+      - Authorization
+      - Content-Disposition
+      - Content-Length
+      - Content-Range
+      - Accept-Ranges
+      - Location
+    allow-credentials: true
+    max-age-seconds: 3600
+  cache:
+    key-prefix: ncf
+    favorites-ttl: 30m
+    recommendations-ttl: 6h
+    delayed-double-delete: 500ms
+  music:
+    yaohu:
+      key: ${YAOHU_API_KEY:nueftCDcdIIAv641ff9}
+      refresh-hours: 6
+      default-search-count: 15
+      default-level: standard
+      media-proxy-host: ${YAOHU_WYVIP_MEDIA_PROXY_HOST:}
+      media-proxy-port: ${YAOHU_WYVIP_MEDIA_PROXY_PORT:0}
+      wyvip:
+        base-url: https://api.yaohud.cn/api/music/wyvip
+      qq-plus:
+        base-url: https://api.yaohud.cn/api/music/qq_plus
+    catalog:
+      auto-sync-on-startup: ${NCF_STARTUP_CATALOG_SYNC:true}
+      resource-path: classpath:music/real_music_catalog.txt
+    favorite-seed:
+      enabled: ${NCF_STARTUP_FAVORITE_SEED:true}
+      minimum-per-user: 4
+  recommendation:
+    refresh-on-startup: ${NCF_STARTUP_RECOMMENDATIONS:true}
+    top-k: 10
+    candidate-pool-size: 40
+    freshness-window-days: 7
+    daily-exploration-jitter: 0.035
+    repeated-item-penalty: 0.08
+    repeated-artist-penalty: 0.07
+    repeated-genre-penalty: 0.03
+    scene: home
+    model-version: ncf_attention_v2_20260314
+    model-name: NCF Attention Online v2
+    feature-version: feature_v2
+    sampling-version: v2
+
+logging:
+  level:
+    com.example.ncfback: INFO
+    org.mybatis: INFO

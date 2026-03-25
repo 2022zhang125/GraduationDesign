@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.ncfback.mapper.FavoriteMapper">
+
+    <select id="findByUserId" resultType="com.example.ncfback.entity.FavoriteItemView">
+        SELECT f.user_id,
+               f.item_id,
+               i.title,
+               i.artist_name,
+               i.album_name,
+               i.genre_code,
+               m.cover_url,
+               m.preview_url,
+               f.created_at AS favorite_time
+        FROM user_favorite_items f
+        JOIN items i ON i.item_id = f.item_id
+        LEFT JOIN item_media m ON m.item_id = f.item_id
+        WHERE f.user_id = #{userId}
+          AND i.title NOT LIKE '示例歌曲%'
+        ORDER BY f.created_at DESC, f.item_id DESC
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM user_favorite_items
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="findItemIdsByUserId" resultType="long">
+        SELECT item_id
+        FROM user_favorite_items
+        WHERE user_id = #{userId}
+        ORDER BY item_id
+    </select>
+
+    <select id="exists" resultType="int">
+        SELECT COUNT(*)
+        FROM user_favorite_items
+        WHERE user_id = #{userId}
+          AND item_id = #{itemId}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO user_favorite_items (user_id, item_id, created_at)
+        VALUES (#{userId}, #{itemId}, NOW())
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM user_favorite_items
+        WHERE user_id = #{userId}
+          AND item_id = #{itemId}
+    </delete>
+
+</mapper>

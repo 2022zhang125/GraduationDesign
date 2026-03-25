@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.ncfback.mapper.ItemMapper">
+
+    <select id="findPage" resultType="com.example.ncfback.entity.Item">
+        SELECT item_id, external_item_no, title, artist_id, artist_name,
+               album_id, album_name, genre_code, language_code, duration_seconds,
+               release_date, item_status, created_at, updated_at
+        FROM items
+        <where>
+            title NOT LIKE '示例歌曲%'
+            <if test="genreCode != null and genreCode != ''">
+                AND genre_code = #{genreCode}
+            </if>
+        </where>
+        ORDER BY item_id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="findById" resultType="com.example.ncfback.entity.Item">
+        SELECT item_id, external_item_no, title, artist_id, artist_name,
+               album_id, album_name, genre_code, language_code, duration_seconds,
+               release_date, item_status, created_at, updated_at
+        FROM items
+        WHERE item_id = #{itemId}
+    </select>
+
+    <select id="findByExternalItemNo" resultType="com.example.ncfback.entity.Item">
+        SELECT item_id, external_item_no, title, artist_id, artist_name,
+               album_id, album_name, genre_code, language_code, duration_seconds,
+               release_date, item_status, created_at, updated_at
+        FROM items
+        WHERE external_item_no = #{externalItemNo}
+        LIMIT 1
+    </select>
+
+    <select id="findByTitleAndArtist" resultType="com.example.ncfback.entity.Item">
+        SELECT item_id, external_item_no, title, artist_id, artist_name,
+               album_id, album_name, genre_code, language_code, duration_seconds,
+               release_date, item_status, created_at, updated_at
+        FROM items
+        WHERE title = #{title}
+          AND artist_name = #{artistName}
+          AND title NOT LIKE '绀轰緥姝屾洸%'
+        ORDER BY item_id
+        LIMIT 1
+    </select>
+
+    <select id="countByGenre" resultType="long">
+        SELECT COUNT(*)
+        FROM items
+        <where>
+            title NOT LIKE '示例歌曲%'
+            <if test="genreCode != null and genreCode != ''">
+                AND genre_code = #{genreCode}
+            </if>
+        </where>
+    </select>
+
+    <select id="findNextItemId" resultType="long">
+        SELECT COALESCE(MAX(item_id), 0) + 1
+        FROM items
+    </select>
+
+    <insert id="insert" parameterType="com.example.ncfback.entity.Item">
+        INSERT INTO items (
+            item_id, external_item_no, title, artist_id, artist_name,
+            album_id, album_name, genre_code, language_code, duration_seconds,
+            release_date, item_status, created_at, updated_at
+        ) VALUES (
+            #{itemId}, #{externalItemNo}, #{title}, #{artistId}, #{artistName},
+            #{albumId}, #{albumName}, #{genreCode}, #{languageCode}, #{durationSeconds},
+            #{releaseDate}, #{itemStatus}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+</mapper>

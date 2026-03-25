@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.ncfback.mapper.UserFollowMapper">
+
+    <select id="findByFollowerUserId" resultType="com.example.ncfback.entity.FollowingUserView">
+        SELECT f.follower_user_id,
+               f.followee_user_id,
+               u.external_user_no AS followee_username,
+               u.gender AS followee_gender,
+               u.birth_year AS followee_birth_year,
+               f.created_at AS follow_time
+        FROM user_follow_relations f
+        JOIN users u
+          ON u.user_id = f.followee_user_id
+        WHERE f.follower_user_id = #{followerUserId}
+        ORDER BY f.created_at DESC, f.followee_user_id ASC
+    </select>
+
+    <select id="findEdgesByFollowerUserId" resultType="com.example.ncfback.entity.UserFollowEdge">
+        SELECT f.follower_user_id,
+               f.followee_user_id,
+               u.external_user_no AS followee_username,
+               f.created_at
+        FROM user_follow_relations f
+        JOIN users u
+          ON u.user_id = f.followee_user_id
+        WHERE f.follower_user_id = #{followerUserId}
+          AND u.user_status = 1
+        ORDER BY f.followee_user_id ASC
+    </select>
+
+    <select id="findAllEdges" resultType="com.example.ncfback.entity.UserFollowEdge">
+        SELECT f.follower_user_id,
+               f.followee_user_id,
+               u.external_user_no AS followee_username,
+               f.created_at
+        FROM user_follow_relations f
+        JOIN users u
+          ON u.user_id = f.followee_user_id
+        WHERE u.user_status = 1
+        ORDER BY f.follower_user_id ASC, f.followee_user_id ASC
+    </select>
+
+    <select id="exists" resultType="int">
+        SELECT COUNT(*)
+        FROM user_follow_relations
+        WHERE follower_user_id = #{followerUserId}
+          AND followee_user_id = #{followeeUserId}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO user_follow_relations (
+            follower_user_id, followee_user_id, created_at
+        ) VALUES (
+            #{followerUserId}, #{followeeUserId}, NOW()
+        )
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM user_follow_relations
+        WHERE follower_user_id = #{followerUserId}
+          AND followee_user_id = #{followeeUserId}
+    </delete>
+
+    <select id="countByFollowerUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM user_follow_relations
+        WHERE follower_user_id = #{followerUserId}
+    </select>
+
+</mapper>

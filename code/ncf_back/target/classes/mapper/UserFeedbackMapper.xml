@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.ncfback.mapper.UserFeedbackMapper">
+
+    <select id="findPageByUserId" resultType="com.example.ncfback.entity.UserFeedbackTicket">
+        SELECT t.ticket_id,
+               t.user_id,
+               u.external_user_no AS username,
+               t.prefer_dimension,
+               t.prefer_value,
+               t.avoid_dimension,
+               t.avoid_value,
+               t.preference_strength,
+               t.detail_text,
+               t.status,
+               t.created_at,
+               t.updated_at
+        FROM user_feedback_tickets t
+        JOIN users u
+          ON u.user_id = t.user_id
+        WHERE t.user_id = #{userId}
+        <if test="status != null and status != ''">
+          AND t.status = #{status}
+        </if>
+        ORDER BY t.created_at DESC, t.ticket_id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM user_feedback_tickets
+        WHERE user_id = #{userId}
+        <if test="status != null and status != ''">
+          AND status = #{status}
+        </if>
+    </select>
+
+    <select id="findActiveByUserId" resultType="com.example.ncfback.entity.UserFeedbackTicket">
+        SELECT ticket_id,
+               user_id,
+               NULL AS username,
+               prefer_dimension,
+               prefer_value,
+               avoid_dimension,
+               avoid_value,
+               preference_strength,
+               detail_text,
+               status,
+               created_at,
+               updated_at
+        FROM user_feedback_tickets
+        WHERE user_id = #{userId}
+          AND status = 'ACTIVE'
+        ORDER BY created_at DESC, ticket_id DESC
+    </select>
+
+    <select id="findAllActive" resultType="com.example.ncfback.entity.UserFeedbackTicket">
+        SELECT ticket_id,
+               user_id,
+               NULL AS username,
+               prefer_dimension,
+               prefer_value,
+               avoid_dimension,
+               avoid_value,
+               preference_strength,
+               detail_text,
+               status,
+               created_at,
+               updated_at
+        FROM user_feedback_tickets
+        WHERE status = 'ACTIVE'
+        ORDER BY user_id ASC, created_at DESC, ticket_id DESC
+    </select>
+
+    <select id="countActiveByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM user_feedback_tickets
+        WHERE user_id = #{userId}
+          AND status = 'ACTIVE'
+    </select>
+
+    <insert id="insert" parameterType="com.example.ncfback.entity.UserFeedbackTicket" useGeneratedKeys="true" keyProperty="ticketId">
+        INSERT INTO user_feedback_tickets (
+            user_id,
+            prefer_dimension,
+            prefer_value,
+            avoid_dimension,
+            avoid_value,
+            preference_strength,
+            detail_text,
+            status,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{userId},
+            #{preferDimension},
+            #{preferValue},
+            #{avoidDimension},
+            #{avoidValue},
+            #{preferenceStrength},
+            #{detailText},
+            #{status},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <update id="closeTicket">
+        UPDATE user_feedback_tickets
+        SET status = 'CLOSED',
+            updated_at = NOW()
+        WHERE ticket_id = #{ticketId}
+          AND user_id = #{userId}
+          AND status = 'ACTIVE'
+    </update>
+
+</mapper>
